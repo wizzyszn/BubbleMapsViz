@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bubblemaps Galaxy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <canvas id="stars"></canvas>
+  <div id="container">
+    <h1>BubbleMaps Galaxy</h1>
+    <select id="time-filter">
+      <option value="all">All Time</option>
+      <option value="7d">Last 7 Days</option>
+      <option value="30d">Last 30 Days</option>
+    </select>
+    <div id="chart"></div>
+    <div id="info-panel">
+      <h2>Trader Info</h2>
+      <p id="info-content">Click a node to view details.</p>
+    </div>
+  </div>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="/script.js" type="module"></script>
+</body>
+</html>

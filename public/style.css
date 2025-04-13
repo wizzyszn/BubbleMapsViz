@@ -1,0 +1,369 @@
+/* Base styles and resets */
+:root {
+    --primary-color: #00ccff;
+    --secondary-color: #8a2be2;
+    --text-color: #ffffff;
+    --bg-color-dark: #0d0d24;
+    --bg-color-light: #1a1a3d;
+    --whale-color: #ff00ff;
+    --retail-color: #00ffff;
+    --shadow-color: rgba(0, 204, 255, 0.6);
+    --hover-color: rgba(138, 43, 226, 0.8);
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Orbitron', sans-serif;
+    background: radial-gradient(circle at center, var(--bg-color-light) 0%, var(--bg-color-dark) 100%);
+    color: var(--text-color);
+    overflow: hidden;
+    position: relative;
+    transition: background 0.5s ease;
+  }
+  
+  /* Starfield canvas */
+  #stars {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+  }
+  
+  /* Main container */
+  #container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-height: 100vh;
+    padding: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Title styling */
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--primary-color);
+    margin: 1rem 0;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+  }
+  
+  /* Time filter dropdown */
+  #time-filter {
+    background: rgba(10, 10, 30, 0.7);
+    border: 2px solid var(--primary-color);
+    color: var(--text-color);
+    padding: 0.6rem 1rem;
+    border-radius: 25px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 0 10px var(--shadow-color);
+    font-family: 'Orbitron', sans-serif;
+    outline: none;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+  
+  #time-filter:hover {
+    box-shadow: 0 0 15px var(--hover-color);
+    border-color: var(--secondary-color);
+  }
+  
+  #time-filter option {
+    background: var(--bg-color-dark);
+    padding: 10px;
+  }
+  
+  /* Chart area */
+  #chart {
+    width: 100%;
+    height: calc(100vh - 120px);
+    background: transparent;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .galaxy-svg {
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Loading indicator */
+  #loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    color: var(--primary-color);
+    text-shadow: 0 0 10px var(--primary-color);
+  }
+  
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid transparent;
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+    box-shadow: 0 0 15px var(--shadow-color);
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  /* No data indicator */
+  .no-data {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-color);
+    text-align: center;
+    padding: 20px;
+    background: rgba(10, 10, 30, 0.6);
+    border-radius: 10px;
+    border: 1px solid var(--primary-color);
+    box-shadow: 0 0 20px var(--shadow-color);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+  
+  /* Node styles */
+  .node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .node.whale {
+    fill: url(#whale-gradient);
+    stroke: var(--whale-color);
+    stroke-width: 2;
+  }
+  
+  .node.retail {
+    fill: url(#retail-gradient);
+    stroke: var(--retail-color);
+    stroke-width: 1.5;
+  }
+  
+  /* Glow effect */
+  .glow {
+    opacity: 0.4;
+    filter: url(#glow);
+    transition: all 0.3s ease;
+  }
+  
+  .glow-whale {
+    fill: var(--whale-color);
+  }
+  
+  .glow-retail {
+    fill: var(--retail-color);
+  }
+  
+  /* Orbit styles */
+  .orbit {
+    fill: none;
+    stroke-width: 0.8;
+    stroke-dasharray: 4, 4;
+    animation: orbit 20s linear infinite;
+    transition: all 0.3s ease;
+  }
+  
+  .orbit-whale {
+    stroke: rgba(255, 0, 255, 0.3);
+  }
+  
+  .orbit-retail {
+    stroke: rgba(0, 255, 255, 0.3);
+  }
+  
+  @keyframes orbit {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 8; }
+  }
+  
+  /* Link styles */
+  .link {
+    stroke: url(#link-gradient);
+    stroke-opacity: 0.6;
+    transition: stroke-opacity 0.3s ease;
+  }
+  
+  /* Node states */
+  .node-group.selected .node {
+    stroke-width: 3;
+    filter: url(#glow);
+  }
+  
+  .node-group.selected .glow {
+    opacity: 0.7;
+  }
+  
+  .node-group.selected .orbit {
+    stroke-opacity: 0.8;
+    stroke-width: 1.2;
+  }
+  
+  .node-group.dragging .node {
+    stroke-width: 3;
+  }
+  
+  .node-group:hover .node {
+    stroke-width: 2.5;
+  }
+  
+  .node-group:hover .glow {
+    opacity: 0.6;
+  }
+  
+  .node-group:hover .orbit {
+    stroke-opacity: 0.6;
+  }
+  
+  /* Tooltip styles */
+  .tooltip {
+    position: absolute;
+    background: rgba(10, 10, 30, 0.85);
+    color: var(--text-color);
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid var(--primary-color);
+    pointer-events: none;
+    font-size: 0.9rem;
+    box-shadow: 0 0 15px var(--shadow-color);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    max-width: 220px;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    overflow: hidden;
+  }
+  
+  .tooltip-header {
+    padding: 8px 12px;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .tooltip-header.whale {
+    background: linear-gradient(90deg, rgba(255, 0, 255, 0.8) 0%, rgba(138, 43, 226, 0.8) 100%);
+  }
+  
+  .tooltip-header.retail {
+    background: linear-gradient(90deg, rgba(0, 204, 255, 0.8) 0%, rgba(0, 102, 204, 0.8) 100%);
+  }
+  
+  .tooltip-content {
+    padding: 8px 12px;
+    line-height: 1.5;
+  }
+  
+  /* Info panel styles */
+  #info-panel {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(10, 10, 30, 0.75);
+    border: 2px solid var(--primary-color);
+    border-radius: 10px;
+    padding: 1.2rem;
+    width: 250px;
+    box-shadow: 0 0 15px var(--shadow-color);
+    z-index: 10;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+  
+  #info-panel:hover {
+    box-shadow: 0 0 20px var(--hover-color);
+  }
+  
+  #info-panel h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.8rem;
+    text-align: center;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+    letter-spacing: 1px;
+  }
+  
+  .info-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  
+  .info-item span {
+    font-weight: bold;
+    color: var(--primary-color);
+  }
+  
+  .info-hint {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+  }
+  
+  /* Settings button (if implemented) */
+  #settings-btn {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: rgba(10, 10, 30, 0.7);
+    border: 2px solid var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.5rem;
+    box-shadow: 0 0 10px var(--shadow-color);
+    transition: all 0.3s ease;
+    z-index: 100;
+  }
+  
+  #settings-btn:hover {
+    transform: rotate(45deg);
+    box-shadow: 0 0 15px var(--hover-color);
+  }
+  
+  /* Light theme (if implemented) */
+  body.light-theme {
+    --text-color: #1a1a3d;
+    --bg-color-dark: #f0f0f8;
+    --bg-color-light: #ffffff;
+    --shadow-color: rgba(0, 102, 204, 0.4)
+}
