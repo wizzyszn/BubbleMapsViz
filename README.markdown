@@ -27,8 +27,8 @@ The project integrates a Telegram bot for user interaction, a Node.js Express se
 1. **Clone the Repository**:
 
    ```bash
-   git clone https://github.com/your-username/top-token-traders-bubble-tool.git
-   cd top-token-traders-bubble-tool
+   git clone https://github.com/wizzyszn/BubbleMapsViz.git
+   cd BubbleMapsViz
    ```
 
 2. **Install Dependencies**:
