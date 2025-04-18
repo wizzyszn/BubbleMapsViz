@@ -1,518 +1,653 @@
-// Performance utilities
-const utils = {
-  debounce(fn, wait) {
-    let timeout;
-    return (...args) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => fn(...args), wait);
-    };
-  },
-  
-  throttle(fn, limit) {
-    let inThrottle;
-    return function(...args) {
-      if (!inThrottle) {
-        fn.apply(this, args);
-        inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
-      }
-    };
+// Configuration
+const config = {
+  apiUrl: '/api/traders',
+  nodeSizeRange: [10, 50],
+  colors: {
+    whale: '#ff6b8b',
+    retail: '#4ade80',
+    linkDefault: '#8b95a8',
+    linkHighlight: '#3a6df0'
   }
 };
 
-// Enhanced starfield effect
-class StarField {
-  constructor() {
-    this.canvas = document.getElementById('stars');
-    this.ctx = this.canvas.getContext('2d', { alpha: true });
-    this.stars = [];
-    this.isInteracting = false;
-    this.animationFrame = null;
-    this.twinkleCounter = 0;
-    
-    this.init();
-    this.setupEventListeners();
+// Application state
+const state = {
+  data: null,
+  simulation: null,
+  svg: null,
+  link: null,
+  node: null,
+  tooltip: null,
+  selectedNode: null,
+  width: 0,
+  height: 0
+};
+
+// DOM Elements
+const tokenAddressInput = document.getElementById('tokenAddress');
+const timeFilterSelect = document.getElementById('timeFilter');
+const searchButton = document.getElementById('searchButton');
+const chartContainer = document.getElementById('chart');
+const detailPanel = document.getElementById('detailPanel');
+const noDataMessage = document.querySelector('.no-data');
+const loader = document.querySelector('.loader');
+
+// Control buttons
+const showAllLinksButton = document.getElementById('showAllLinks');
+const hideAllLinksButton = document.getElementById('hideAllLinks');
+const clusterByCategoryButton = document.getElementById('clusterByCategory');
+const resetLayoutButton = document.getElementById('resetLayout');
+const closeDetailPanelButton = document.getElementById('closeDetailPanel');
+
+// Detail panel elements
+const traderAddressElement = document.getElementById('traderAddress');
+const traderTypeElement = document.getElementById('traderType');
+const traderVolumeElement = document.getElementById('traderVolume');
+const connectedTradersElement = document.getElementById('connectedTraders');
+const copyAddressButton = document.getElementById('copyAddressButton');
+const viewOnEtherscanButton = document.getElementById('viewOnEtherscan');
+const trackWalletButton = document.getElementById('trackWallet');
+const transactionListElement = document.getElementById('transactionList');
+
+// Initialize the application
+function init() {
+  // Create SVG element
+  state.width = chartContainer.clientWidth;
+  state.height = chartContainer.clientHeight;
+
+  state.svg = d3.select(chartContainer)
+    .append('svg')
+    .attr('width', state.width)
+    .attr('height', state.height);
+
+  // Create tooltip
+  state.tooltip = d3.select('body')
+    .append('div')
+    .attr('class', 'tooltip')
+    .style('opacity', 0);
+
+  // Add event listeners
+  searchButton.addEventListener('click', fetchTraderData);
+  showAllLinksButton.addEventListener('click', showAllLinks);
+  hideAllLinksButton.addEventListener('click', hideAllLinks);
+  clusterByCategoryButton.addEventListener('click', clusterByCategory);
+  resetLayoutButton.addEventListener('click', resetLayout);
+  closeDetailPanelButton.addEventListener('click', closeDetailPanel);
+  copyAddressButton.addEventListener('click', copyTraderAddress);
+  viewOnEtherscanButton.addEventListener('click', viewOnEtherscan);
+  trackWalletButton.addEventListener('click', trackWallet);
+
+  // Handle window resize
+  window.addEventListener('resize', handleResize);
+
+  // Initial data fetch
+  fetchTraderData();
+}
+
+// Fetch trader data from the API
+async function fetchTraderData() {
+  const tokenAddress = tokenAddressInput.value.trim();
+  const timeFilter = timeFilterSelect.value;
+
+  if (!tokenAddress || !/^0x[a-fA-F0-9]{40}$/i.test(tokenAddress)) {
+    alert('Please enter a valid token contract address');
+    return;
   }
-  
-  init() {
-    this.resize();
-    this.createStars();
-    this.animate();
-  }
-  
-  resize() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-  }
-  
-  createStars() {
-    const starCount = this.getOptimalStarCount();
-    this.stars = [];
-    
-    for (let i = 0; i < starCount; i++) {
-      this.stars.push({
-        x: Math.random() * this.canvas.width,
-        y: Math.random() * this.canvas.height,
-        radius: Math.random() * 1.5 + 0.2,
-        baseOpacity: Math.random() * 0.5 + 0.3,
-        opacity: Math.random() * 0.5 + 0.3,
-        twinkleSpeed: Math.random() * 0.03 + 0.01,
-        twinkleDirection: Math.random() > 0.5 ? 1 : -1
-      });
+
+  // Reset and show loader
+  resetVisualization();
+  loader.style.display = 'block';
+  noDataMessage.style.display = 'none';
+  closeDetailPanel();
+
+  try {
+    const response = await fetch(`${config.apiUrl}?address=${tokenAddress}&time=${timeFilter}`);
+
+    if (!response.ok) {
+      throw new Error(`API responded with status: ${response.status}`);
     }
-  }
-  
-  getOptimalStarCount() {
-    // Adjust star density based on screen size
-    const area = this.canvas.width * this.canvas.height;
-    return Math.min(Math.floor(area / 10000), 150);
-  }
-  
-  setupEventListeners() {
-    window.addEventListener('resize', utils.debounce(() => {
-      this.resize();
-      this.createStars();
-    }, 200));
-    
-    window.addEventListener('mousedown', () => this.isInteracting = true);
-    window.addEventListener('mouseup', () => this.isInteracting = false);
-    window.addEventListener('touchstart', () => this.isInteracting = true);
-    window.addEventListener('touchend', () => this.isInteracting = false);
-  }
-  
-  animate() {
-    if (!this.isInteracting) {
-      this.twinkleCounter++;
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      
-      this.stars.forEach(star => {
-        // Twinkle effect
-        if (this.twinkleCounter % 3 === 0) {
-          star.opacity += star.twinkleDirection * star.twinkleSpeed;
-          
-          if (star.opacity > star.baseOpacity + 0.3 || star.opacity < star.baseOpacity - 0.3) {
-            star.twinkleDirection *= -1;
-          }
-        }
-        
-        this.ctx.beginPath();
-        this.ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-        this.ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-        this.ctx.fill();
-      });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
     }
-    
-    this.animationFrame = requestAnimationFrame(() => this.animate());
-  }
-  
-  destroy() {
-    cancelAnimationFrame(this.animationFrame);
-    this.stars = [];
+
+    if (data.message || data.nodes.length === 0) {
+      noDataMessage.style.display = 'block';
+      loader.style.display = 'none';
+      return;
+    }
+
+    // Store data and create visualization
+    state.data = processData(data);
+    createVisualization();
+    loader.style.display = 'none';
+  } catch (error) {
+    console.error('Error fetching trader data:', error);
+    noDataMessage.style.display = 'block';
+    loader.style.display = 'none';
+    alert(`Error: ${error.message}`);
   }
 }
 
-// Galaxy visualization
-class GalaxyVisualizer {
-  constructor() {
-    this.currentData = null;
-    this.simulation = null;
-    this.svg = null;
-    this.tooltip = null;
-    this.width = window.innerWidth;
-    this.height = window.innerHeight - 120;
-    this.isRendering = false;
-    
-    this.init();
+// Process the API data
+function processData(data) {
+  // Calculate max volume for node sizing
+  const maxVolume = Math.max(...data.nodes.map(node => node.volume));
+
+  // Process nodes
+  const nodes = data.nodes.map(node => {
+    const sizeScale = d3.scaleLinear()
+      .domain([0, maxVolume])
+      .range(config.nodeSizeRange);
+
+    return {
+      ...node,
+      radius: sizeScale(node.volume),
+      color: node.type === 'whale' ? config.colors.whale : config.colors.retail
+    };
+  });
+
+  // Process links
+  const links = data.links.map(link => ({
+    source: link.source,
+    target: link.target,
+    // Add some sample transaction data for demo purposes
+    value: Math.random() * 1000 + 100,
+    timestamp: Date.now() - Math.floor(Math.random() * 604800000),
+    txHash: '0x' + Array.from({ length: 64 }, () =>
+      '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('')
+  }));
+
+  return { nodes, links };
+}
+
+// Create the force-directed visualization
+function createVisualization() {
+  // Clear existing visualization
+  state.svg.selectAll('*').remove();
+
+  // Create force simulation
+  state.simulation = d3.forceSimulation(state.data.nodes)
+    .force('link', d3.forceLink(state.data.links)
+      .id(d => d.id)
+      .distance(100))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(state.width / 2, state.height / 2))
+    .force('collide', d3.forceCollide().radius(d => d.radius + 5))
+    .on('tick', ticked);
+
+  // Create the links
+  state.link = state.svg.append('g')
+    .attr('class', 'links')
+    .selectAll('line')
+    .data(state.data.links)
+    .enter()
+    .append('line')
+    .attr('stroke', config.colors.linkDefault)
+    .attr('stroke-opacity', 0.5)
+    .attr('stroke-width', 1.5)
+    .on('mouseover', handleLinkMouseOver)
+    .on('mouseout', handleLinkMouseOut);
+
+  // Create the nodes
+  state.node = state.svg.append('g')
+    .attr('class', 'nodes')
+    .selectAll('circle')
+    .data(state.data.nodes)
+    .enter()
+    .append('circle')
+    .attr('r', d => d.radius)
+    .attr('fill', d => d.color)
+    .attr('stroke', '#ffffff')
+    .attr('stroke-width', 1.5)
+    .attr('fill-opacity', 0.8)
+    .call(drag(state.simulation))
+    .on('mouseover', handleNodeMouseOver)
+    .on('mouseout', handleNodeMouseOut)
+    .on('click', handleNodeClick);
+
+  // Add node labels for whales only
+  state.svg.append('g')
+    .attr('class', 'labels')
+    .selectAll('text')
+    .data(state.data.nodes.filter(d => d.type === 'whale'))
+    .enter()
+    .append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '-1.2em')
+    .attr('fill', '#ffffff')
+    .attr('font-size', '10px')
+    .text(d => shortenAddress(d.id));
+}
+
+// Update positions on tick
+function ticked() {
+  // Contain nodes within visualization bounds
+  state.data.nodes.forEach(d => {
+    d.x = Math.max(d.radius, Math.min(state.width - d.radius, d.x));
+    d.y = Math.max(d.radius, Math.min(state.height - d.radius, d.y));
+  });
+
+  // Update link positions
+  state.link
+    .attr('x1', d => d.source.x)
+    .attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x)
+    .attr('y2', d => d.target.y);
+
+  // Update node positions
+  state.node
+    .attr('cx', d => d.x)
+    .attr('cy', d => d.y);
+
+  // Update label positions
+  state.svg.selectAll('.labels text')
+    .attr('x', d => d.x)
+    .attr('y', d => d.y);
+}
+
+// Drag functionality
+function drag(simulation) {
+  function dragstarted(event, d) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
   }
-  
-  init() {
-    this.createTooltip();
-    this.setupEventListeners();
-    this.initializeFromUrl();
+
+  function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
   }
-  
-  createTooltip() {
-    this.tooltip = d3.select('body').selectAll('.tooltip').data([0]).join('div')
-      .attr('class', 'tooltip')
-      .style('opacity', 0);
+
+  function dragended(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
   }
-  
-  setupEventListeners() {
-    document.getElementById('time-filter').addEventListener('change', () => this.updateMap());
-    
-    window.addEventListener('resize', utils.debounce(() => {
-      if (this.currentData) {
-        this.width = window.innerWidth;
-        this.height = window.innerHeight - 120;
-        
-        if (this.svg) {
-          this.svg.attr('width', this.width).attr('height', this.height);
-          
-          if (this.simulation) {
-            this.simulation.force('center', d3.forceCenter(this.width / 2, this.height / 2));
-            this.simulation.alpha(0.1).restart();
-          }
-        }
-      }
-    }, 200));
-  }
-  
-  initializeFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const address = urlParams.get('address') || '0xdac17f958d2ee523a2206206994597c13d831ec7';
-    this.renderMap(address);
-  }
-  
-  async fetchTraderData(address, timeFilter = 'all') {
-    try {
-      console.log(`Fetching data for address: ${address}, time: ${timeFilter}`);
-      const res = await fetch(`/api/traders?address=${address}&time=${timeFilter}`);
-      
-      if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-      
-      return await res.json();
-    } catch (error) {
-      console.error('Fetch error:', error);
-      return { nodes: [], links: [], message: 'Failed to load trader data.' };
+
+  return d3.drag()
+    .on('start', dragstarted)
+    .on('drag', dragged)
+    .on('end', dragended);
+}
+
+// Node hover functionality
+function handleNodeMouseOver(event, d) {
+  // Highlight connected links and nodes
+  state.link
+    .attr('stroke', l => (l.source.id === d.id || l.target.id === d.id)
+      ? config.colors.linkHighlight : config.colors.linkDefault)
+    .attr('stroke-opacity', l => (l.source.id === d.id || l.target.id === d.id) ? 0.8 : 0.2)
+    .attr('stroke-width', l => (l.source.id === d.id || l.target.id === d.id) ? 2.5 : 1);
+
+  state.node
+    .attr('stroke-width', n => {
+      const isConnected = state.data.links.some(l =>
+        (l.source.id === d.id && l.target.id === n.id) ||
+        (l.target.id === d.id && l.source.id === n.id));
+      return n.id === d.id || isConnected ? 3 : 1.5;
+    })
+    .attr('fill-opacity', n => {
+      const isConnected = state.data.links.some(l =>
+        (l.source.id === d.id && l.target.id === n.id) ||
+        (l.target.id === d.id && l.source.id === n.id));
+      return n.id === d.id || isConnected ? 1 : 0.3;
+    });
+
+  // Show tooltip
+  state.tooltip
+    .transition()
+    .duration(200)
+    .style('opacity', 0.9);
+
+  state.tooltip
+    .html(`
+      <strong>${shortenAddress(d.id)}</strong>
+      <span class="badge badge-${d.type}">${d.type}</span><br/>
+      <b>Volume:</b> ${formatCurrency(d.volume)}
+    `)
+    .style('left', (event.pageX + 15) + 'px')
+    .style('top', (event.pageY - 30) + 'px');
+}
+
+// Node hover out functionality
+function handleNodeMouseOut() {
+  // Reset links and nodes
+  state.link
+    .attr('stroke', config.colors.linkDefault)
+    .attr('stroke-opacity', 0.5)
+    .attr('stroke-width', 1.5);
+
+  state.node
+    .attr('stroke-width', 1.5)
+    .attr('fill-opacity', 0.8);
+
+  // Hide tooltip
+  state.tooltip
+    .transition()
+    .duration(500)
+    .style('opacity', 0);
+}
+
+// Link hover functionality
+function handleLinkMouseOver(event, d) {
+  // Highlight the link
+  d3.select(event.currentTarget)
+    .attr('stroke', config.colors.linkHighlight)
+    .attr('stroke-opacity', 1)
+    .attr('stroke-width', 3);
+
+  // Show transaction details in tooltip
+  state.tooltip
+    .transition()
+    .duration(200)
+    .style('opacity', 0.9);
+
+  const formattedDate = new Date(d.timestamp).toLocaleString();
+
+  state.tooltip
+    .html(`
+      <strong>Transaction Details</strong><br/>
+      <b>From:</b> ${shortenAddress(d.source.id)}<br/>
+      <b>To:</b> ${shortenAddress(d.target.id)}<br/>
+      <b>Value:</b> ${formatCurrency(d.value)}<br/>
+      <b>Time:</b> ${formattedDate}<br/>
+      <b>Tx Hash:</b> ${shortenAddress(d.txHash)}
+    `)
+    .style('left', (event.pageX + 15) + 'px')
+    .style('top', (event.pageY - 30) + 'px');
+}
+
+// Link hover out functionality
+function handleLinkMouseOut(event) {
+  d3.select(event.currentTarget)
+    .attr('stroke', config.colors.linkDefault)
+    .attr('stroke-opacity', 0.5)
+    .attr('stroke-width', 1.5);
+
+  state.tooltip
+    .transition()
+    .duration(500)
+    .style('opacity', 0);
+}
+
+// Node click functionality
+function handleNodeClick(event, d) {
+  state.selectedNode = d;
+  showDetailPanel(d);
+
+  // Highlight connected links and nodes (same as mouseover)
+  handleNodeMouseOver(event, d);
+
+  // Don't let the tooltip disappear when clicking
+  state.tooltip
+    .transition()
+    .duration(0)
+    .style('opacity', 0);
+}
+
+// Show details panel for selected node
+function showDetailPanel(node) {
+  detailPanel.style.display = 'block';
+
+  // Update panel details
+  traderAddressElement.textContent = node.id;
+  traderTypeElement.innerHTML = `${node.type} <span class="badge badge-${node.type}">${node.type}</span>`;
+  traderVolumeElement.textContent = formatCurrency(node.volume);
+
+  // Count connected traders
+  const connectedLinks = state.data.links.filter(
+    l => l.source.id === node.id || l.target.id === node.id
+  );
+
+  const connectedTraders = new Set();
+  connectedLinks.forEach(link => {
+    if (link.source.id === node.id) {
+      connectedTraders.add(link.target.id);
+    } else {
+      connectedTraders.add(link.source.id);
     }
+  });
+
+  connectedTradersElement.textContent = connectedTraders.size;
+
+  // Generate mock transaction history
+  generateTransactionHistory(node, connectedLinks);
+}
+
+// Generate transaction history for the detail panel
+function generateTransactionHistory(node, connectedLinks) {
+  transactionListElement.innerHTML = '';
+
+  // Use the actual links as transactions or generate mock data if needed
+  const transactions = connectedLinks.slice(0, 5); // Limit to 5 transactions
+
+  if (transactions.length === 0) {
+    transactionListElement.innerHTML = '<div class="transaction-item">No transactions found</div>';
+    return;
   }
-  
-  updateMap() {
-    if (this.isRendering) return;
-    
-    const timeFilter = document.getElementById('time-filter').value;
-    const urlParams = new URLSearchParams(window.location.search);
-    const address = urlParams.get('address') || '0xdac17f958d2ee523a2206206994597c13d831ec7';
-    
-    console.log('Updating with time filter:', timeFilter);
-    this.renderMap(address, timeFilter);
+
+  transactions.forEach((tx, index) => {
+    const isOutgoing = tx.source.id === node.id;
+    const otherParty = isOutgoing ? tx.target.id : tx.source.id;
+    const formattedDate = new Date(tx.timestamp).toLocaleString();
+
+    const txElement = document.createElement('div');
+    txElement.className = 'transaction-item';
+
+    txElement.innerHTML = `
+      <div class="transaction-item-header">
+        <span class="tx-hash">${shortenAddress(tx.txHash)}</span>
+        <span class="eth-value">${formatCurrency(tx.value)}</span>
+      </div>
+      <div>
+        ${isOutgoing ? 'To' : 'From'}: <span class="address-truncated">${shortenAddress(otherParty)}</span>
+      </div>
+      <div>${formattedDate}</div>
+    `;
+
+    transactionListElement.appendChild(txElement);
+  });
+}
+
+// Close detail panel
+function closeDetailPanel() {
+  detailPanel.style.display = 'none';
+  state.selectedNode = null;
+
+  // Reset node highlighting
+  if (state.node) {
+    state.node
+      .attr('stroke-width', 1.5)
+      .attr('fill-opacity', 0.8);
+
+    state.link
+      .attr('stroke', config.colors.linkDefault)
+      .attr('stroke-opacity', 0.5)
+      .attr('stroke-width', 1.5);
   }
+}
+
+// Copy trader address to clipboard
+function copyTraderAddress() {
+  if (!state.selectedNode) return;
+
+  navigator.clipboard.writeText(state.selectedNode.id)
+    .then(() => {
+      alert('Address copied to clipboard');
+    })
+    .catch(err => {
+      console.error('Failed to copy address:', err);
+    });
+}
+
+// Complete the viewOnEtherscan function
+function viewOnEtherscan() {
+  if (!state.selectedNode) return;
+
+  const url = `https://etherscan.io/address/${state.selectedNode.id}`;
+  window.open(url, '_blank');
+}
+
+// Track wallet functionality
+function trackWallet() {
+  if (!state.selectedNode) return;
+
+  // This would typically connect to a wallet tracking service
+  // For demo purposes, we'll just show an alert
+  alert(`Tracking wallet ${shortenAddress(state.selectedNode.id)}`);
+}
+
+// Show all links between nodes
+function showAllLinks() {
+  state.link
+    .attr('stroke-opacity', 0.5)
+    .attr('stroke-width', 1.5);
+}
+
+// Hide all links between nodes
+function hideAllLinks() {
+  state.link
+    .attr('stroke-opacity', 0);
+}
+
+// Cluster nodes by category (whale/retail)
+function clusterByCategory() {
+  if (!state.simulation) return;
+
+  // Stop current simulation
+  state.simulation.stop();
+
+  // Define centers for each category
+  const centers = {
+    whale: { x: state.width * 0.25, y: state.height / 2 },
+    retail: { x: state.width * 0.75, y: state.height / 2 }
+  };
+
+  // Update forces
+  state.simulation
+    .force('x', d3.forceX().x(d => centers[d.type].x).strength(0.5))
+    .force('y', d3.forceY().y(d => centers[d.type].y).strength(0.5))
+    .force('center', null)
+    .alpha(1)
+    .restart();
+}
+
+// Reset the visualization layout
+function resetLayout() {
+  if (!state.simulation) return;
+
+  // Stop current simulation
+  state.simulation.stop();
+
+  // Reset forces to default
+  state.simulation
+    .force('x', null)
+    .force('y', null)
+    .force('center', d3.forceCenter(state.width / 2, state.height / 2))
+    .alpha(1)
+    .restart();
+}
+
+// Reset visualization when new data is fetched
+function resetVisualization() {
+  if (state.simulation) {
+    state.simulation.stop();
+    state.simulation = null;
+  }
+
+  state.svg.selectAll('*').remove();
+  state.data = null;
+  state.link = null;
+  state.node = null;
+  state.selectedNode = null;
+}
+
+// Handle window resize
+function handleResize() {
+  state.width = chartContainer.clientWidth;
+  state.height = chartContainer.clientHeight;
+
+  state.svg
+    .attr('width', state.width)
+    .attr('height', state.height);
+
+  if (state.simulation) {
+    state.simulation
+      .force('center', d3.forceCenter(state.width / 2, state.height / 2))
+      .alpha(0.3)
+      .restart();
+  }
+}
+
+// Helper function to shorten Ethereum addresses
+function shortenAddress(address) {
+  if (!address) return '';
+  return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+}
+
+// Helper function to format currency values
+function formatCurrency(value) {
+  if (value == null) return '$0';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+// Initialize the application on load
+document.addEventListener('DOMContentLoaded', init);
+
+// Replace the mock API with this real API connection
+
+
+// Generate transaction history for the detail panel
+/*async function generateTransactionHistory(node) {
+  transactionListElement.innerHTML = '<div class="transaction-item">Loading transactions...</div>';
   
-  async renderMap(address, timeFilter = 'all') {
-    if (this.isRendering) return;
-    this.isRendering = true;
+  try {
+    const tokenAddress = tokenAddressInput.value.trim();
+    const response = await fetch(`/api/trader/${node.id}/transactions?tokenAddress=${tokenAddress}`);
     
-    // Clean up previous visualization
-    if (this.simulation) {
-      this.simulation.stop();
-      this.simulation = null;
+    if (!response.ok) {
+      throw new Error(`API responded with status: ${response.status}`);
     }
     
-    const chart = d3.select('#chart');
-    chart.selectAll('*').remove();
+    const transactions = await response.json();
     
-    // Add loading indicator
-    chart
-      .append('div')
-      .attr('id', 'loading')
-      .html('<div class="spinner"></div><span>Mapping Galaxy...</span>');
+    transactionListElement.innerHTML = '';
     
-    // Fetch data
-    const data = await this.fetchTraderData(address, timeFilter);
-    chart.select('#loading').remove();
-    this.currentData = data;
-    
-    if (data.nodes.length === 0) {
-      chart
-        .append('div')
-        .attr('class', 'no-data')
-        .html(`<span>${data.message || 'No trader data available.'}</span>`);
-        
-      this.isRendering = false;
+    if (transactions.length === 0) {
+      transactionListElement.innerHTML = '<div class="transaction-item">No transactions found</div>';
       return;
     }
     
-    this.createVisualization(data);
-    this.isRendering = false;
-  }
-  
-  createVisualization(data) {
-    // Create SVG
-    this.svg = d3.select('#chart')
-      .append('svg')
-      .attr('width', this.width)
-      .attr('height', this.height)
-      .attr('class', 'galaxy-svg');
-    
-    // Add gradients and effects
-    this.addDefinitions();
-    
-    // Initialize simulation with optimized parameters
-    this.simulation = d3
-      .forceSimulation(data.nodes)
-      .force('link', d3.forceLink(data.links)
-        .id(d => d.id)
-        .distance(d => 80 + Math.sqrt(d.source.volume + d.target.volume) / 5000)
-        .strength(0.2))
-      .force('charge', d3.forceManyBody()
-        .strength(d => -100 - Math.sqrt(d.volume) / 500)
-        .distanceMax(300))
-      .force('collision', d3.forceCollide()
-        .radius(d => Math.sqrt(d.volume) / 1000 * 15 + 5)
-        .strength(0.8))
-      .force('center', d3.forceCenter(this.width / 2, this.height / 2))
-      .alphaDecay(0.028)
-      .velocityDecay(0.4);
-    
-    // Create links
-    const link = this.svg
-      .append('g')
-      .attr('class', 'links')
-      .selectAll('line')
-      .data(data.links)
-      .join('line')
-      .attr('class', 'link')
-      .attr('stroke-width', d => Math.log(d.value || 1) / 2 + 0.5);
-    
-    // Create node groups
-    const nodeGroup = this.svg
-      .append('g')
-      .attr('class', 'nodes')
-      .selectAll('g')
-      .data(data.nodes)
-      .join('g')
-      .attr('class', 'node-group');
-    
-    // Add orbits
-    nodeGroup
-      .append('circle')
-      .attr('class', d => `orbit orbit-${d.type}`)
-      .attr('r', d => Math.sqrt(d.volume) / 1000 * 25 + 10);
-    
-    // Add glow effect
-    nodeGroup
-      .append('circle')
-      .attr('class', d => `glow glow-${d.type}`)
-      .attr('r', d => Math.sqrt(d.volume) / 1000 * 17 + 2);
-    
-    // Add nodes
-    const node = nodeGroup
-      .append('circle')
-      .attr('class', d => `node ${d.type}`)
-      .attr('r', d => Math.sqrt(d.volume) / 1000 * 15 + 3)
-      .call(this.drag());
-    
-    // Add tooltips
-    this.addTooltipEvents(node);
-    
-    // Add info panel interactions
-    this.addInfoPanelEvents(node, this.svg);
-    
-    // Update positions on simulation tick
-    this.simulation.on('tick', () => {
-      // Limit node positions to SVG boundaries with padding
-      data.nodes.forEach(d => {
-        const r = Math.sqrt(d.volume) / 1000 * 15 + 10;
-        d.x = Math.max(r, Math.min(this.width - r, d.x));
-        d.y = Math.max(r, Math.min(this.height - r, d.y));
-      });
+    transactions.forEach(tx => {
+      const isOutgoing = tx.isOutgoing;
+      const otherParty = tx.otherParty;
+      const formattedDate = new Date(tx.timestamp || Date.now()).toLocaleString();
       
-      link
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y);
+      const txElement = document.createElement('div');
+      txElement.className = 'transaction-item';
       
-      nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`);
+      txElement.innerHTML = `
+        <div class="transaction-item-header">
+          <span class="tx-hash">${shortenAddress(tx.txHash)}</span>
+          <span class="eth-value">${formatCurrency(tx.value)}</span>
+        </div>
+        <div>
+          ${isOutgoing ? 'To' : 'From'}: <span class="address-truncated">${shortenAddress(otherParty)}</span>
+        </div>
+        <div>${formattedDate}</div>
+      `;
+      
+      transactionListElement.appendChild(txElement);
     });
-    
-    // Add zoom functionality
-    this.svg.call(
-      d3.zoom()
-        .scaleExtent([0.2, 5])
-        .on('zoom', event => {
-          this.svg.selectAll('g').attr('transform', event.transform);
-        })
-    );
-    
-    // Stop simulation after 2 seconds for performance
-    setTimeout(() => {
-      if (this.simulation) {
-        this.simulation.alphaTarget(0).alphaDecay(0.05);
-      }
-    }, 2000);
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    transactionListElement.innerHTML = '<div class="transaction-item">Error loading transactions</div>';
   }
-  
-  addDefinitions() {
-    const defs = this.svg.append('defs');
-    
-    // Add a filter for the glow effect
-    const filter = defs.append('filter')
-      .attr('id', 'glow')
-      .attr('height', '300%')
-      .attr('width', '300%')
-      .attr('x', '-100%')
-      .attr('y', '-100%');
-      
-    filter.append('feGaussianBlur')
-      .attr('stdDeviation', '5')
-      .attr('result', 'coloredBlur');
-      
-    const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode').attr('in', 'coloredBlur');
-    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
-    
-    // Whale gradient
-    const whaleGradient = defs
-      .append('radialGradient')
-      .attr('id', 'whale-gradient')
-      .attr('cx', '50%')
-      .attr('cy', '50%')
-      .attr('r', '50%')
-      .attr('fx', '50%')
-      .attr('fy', '50%');
-      
-    whaleGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#ff00ff');
-    
-    whaleGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#800080');
-    
-    // Retail gradient
-    const retailGradient = defs
-      .append('radialGradient')
-      .attr('id', 'retail-gradient')
-      .attr('cx', '50%')
-      .attr('cy', '50%')
-      .attr('r', '50%')
-      .attr('fx', '50%')
-      .attr('fy', '50%');
-      
-    retailGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#00ffff');
-    
-    retailGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#0066cc');
-      
-    // Link gradient
-    const linkGradient = defs
-      .append('linearGradient')
-      .attr('id', 'link-gradient')
-      .attr('gradientUnits', 'userSpaceOnUse');
-      
-    linkGradient.append('stop')
-      .attr('offset', '0%')
-      .attr('stop-color', '#00ccff');
-      
-    linkGradient.append('stop')
-      .attr('offset', '50%')
-      .attr('stop-color', '#8a2be2');
-      
-    linkGradient.append('stop')
-      .attr('offset', '100%')
-      .attr('stop-color', '#00ccff');
-  }
-  
-  addTooltipEvents(node) {
-    const updateTooltip = utils.throttle((event, d) => {
-      this.tooltip
-        .style('opacity', 1)
-        .html(`
-          <div class="tooltip-header ${d.type}">Trader Info</div>
-          <div class="tooltip-content">
-            <div>Address: ${d.id.slice(0, 6)}...${d.id.slice(-4)}</div>
-            <div>Type: ${d.type.charAt(0).toUpperCase() + d.type.slice(1)}</div>
-            <div>Volume: ${d.volume.toLocaleString()}</div>
-          </div>
-        `)
-        .style('left', `${event.pageX + 15}px`)
-        .style('top', `${event.pageY - 30}px`);
-    }, 30);
-    
-    node
-      .on('mouseover', function(event, d) {
-        d3.select(this.parentNode).raise();
-        updateTooltip(event, d);
-      })
-      .on('mousemove', function(event, d) {
-        updateTooltip(event, d);
-      })
-      .on('mouseout', () => {
-        this.tooltip.style('opacity', 0);
-      });
-  }
-  
-  addInfoPanelEvents(node, svg) {
-    const infoPanel = d3.select('#info-content');
-    
-    node.on('click', function(event, d) {
-      // Highlight selected node
-      d3.selectAll('.node-group').classed('selected', false);
-      d3.select(this.parentNode).classed('selected', true);
-      
-      infoPanel.html(`
-        <div class="info-item"><span>Address:</span> ${d.id.slice(0, 6)}...${d.id.slice(-4)}</div>
-        <div class="info-item"><span>Type:</span> ${d.type.charAt(0).toUpperCase() + d.type.slice(1)}</div>
-        <div class="info-item"><span>Volume:</span> ${d.volume.toLocaleString()}</div>
-        <div class="info-item"><span>Connections:</span> ${d.connections || 'Unknown'}</div>
-      `);
-      
-      event.stopPropagation();
-    });
-    
-    svg.on('click', () => {
-      d3.selectAll('.node-group').classed('selected', false);
-      infoPanel.html('<div class="info-hint">Click a node to view details</div>');
-    });
-  }
-  
-  drag() {
-    const simulation = this.simulation;
-    
-    function dragstarted(event) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
-      
-      // Highlight the dragged node
-      d3.select(this.parentNode).classed('dragging', true);
-    }
-    
-    function dragged(event) {
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
-    }
-    
-    function dragended(event) {
-      if (!event.active) simulation.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
-      
-      // Remove highlight
-      d3.select(this.parentNode).classed('dragging', false);
-    }
-    
-    return d3
-      .drag()
-      .on('start', dragstarted)
-      .on('drag', dragged)
-      .on('end', dragended);
-  }
-}
-
-// Initialize application
-document.addEventListener('DOMContentLoaded', () => {
-  const starField = new StarField();
-  const galaxyVisualizer = new GalaxyVisualizer();
-  
-  // Add theme toggle if needed
-  const toggleTheme = () => {
-    document.body.classList.toggle('light-theme');
-  };
-  
-  // Create settings menu if needed
-  const createSettingsMenu = () => {
-    const settingsBtn = document.createElement('button');
-    settingsBtn.id = 'settings-btn';
-    settingsBtn.innerHTML = '⚙️';
-    document.body.appendChild(settingsBtn);
-    
-    settingsBtn.addEventListener('click', () => {
-      // Implementation for settings menu
-    });
-  };
-});
+} */

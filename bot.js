@@ -21,7 +21,7 @@ bot.command('bubblemaps', (ctx) => {
         [
           {
             text: 'Open Bubble Map',
-            web_app: { url: `https://your-app.render.com/?address=${contractAddress}` },
+            web_app: { url: `http://localhost:3000/?address=${contractAddress}` },
           },
         ],
       ],

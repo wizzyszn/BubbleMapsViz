@@ -1,28 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bubblemaps Galaxy</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <canvas id="stars"></canvas>
-  <div id="container">
-    <h1>BubbleMaps Galaxy</h1>
-    <select id="time-filter">
-      <option value="all">All Time</option>
-      <option value="7d">Last 7 Days</option>
-      <option value="30d">Last 30 Days</option>
-    </select>
-    <div id="chart"></div>
-    <div id="info-panel">
-      <h2>Trader Info</h2>
-      <p id="info-content">Click a node to view details.</p>
+  <head>
+    <link rel="stylesheet" href="./style.css" />
+    <meta charset="UTF-8" />
+    <title>Top Token Holder Network Visualization</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="title-section">
+          <h1 class="title">Top Token Trader Network</h1>
+          <p class="subtitle">
+            Visualize trading relationships between wallets
+          </p>
+        </div>
+        <div class="search-section">
+          <input
+            type="text"
+            id="tokenAddress"
+            placeholder="Enter token contract address (0x...)"
+            value="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+          />
+          <select id="timeFilter">
+            <option value="all">All Time</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+          </select>
+          <button id="searchButton">Analyze</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="visualization" id="chart">
+          <div class="controls">
+            <button id="showAllLinks">Show All Connections</button>
+            <button id="hideAllLinks">Hide All Connections</button>
+            <button id="clusterByCategory">Cluster By Type</button>
+            <button id="resetLayout">Reset Layout</button>
+          </div>
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: #ff6b8b"></div>
+              <div>Whales (Top 25% by Volume)</div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: #4ade80"></div>
+              <div>Retail Traders</div>
+            </div>
+          </div>
+          <div class="no-data" style="display: none">
+            <h3>No Data Available</h3>
+            <p>Try a different token address or time period</p>
+          </div>
+          <div class="loader">
+            <div class="loader-spinner"></div>
+            <p>Loading trader data...</p>
+          </div>
+        </div>
+        <div class="detail-panel" id="detailPanel">
+          <button id="closeDetailPanel">✕</button>
+          <h2 class="panel-title">Trader Details</h2>
+          <div class="detail-item">
+            <div class="detail-label">Address</div>
+            <div class="address-section">
+              <div class="detail-value" id="traderAddress"></div>
+              <button class="copy-button" id="copyAddressButton">📋</button>
+            </div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Trader Type</div>
+            <div class="detail-value" id="traderType"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Trading Volume</div>
+            <div class="detail-value" id="traderVolume"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Connected Traders</div>
+            <div class="detail-value" id="connectedTraders"></div>
+          </div>
+          <div class="panel-action-buttons">
+            <button id="viewOnEtherscan">View on Etherscan</button>
+            <button id="trackWallet" disabled="true">Track Wallet</button>
+          </div>
+          <div class="tx-detail-section">
+            <h3 class="panel-title">Recent Transactions</h3>
+            <div class="transaction-list" id="transactionList">
+              <!-- Transaction items will be added here -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="/script.js" type="module"></script>
-</body>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="./script.js" type="module"></script>
+  </body>
 </html>
