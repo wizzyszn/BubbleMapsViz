@@ -15,6 +15,8 @@ const state = {
   data: null,
   simulation: null,
   svg: null,
+  zoomGroup: null,
+  zoom: null,
   link: null,
   node: null,
   tooltip: null,
@@ -60,6 +62,17 @@ function init() {
     .attr('width', state.width)
     .attr('height', state.height);
 
+  // A container group for all visualization elements that will be zoomed
+  state.zoomGroup = state.svg.append('g')
+    .attr('class', 'zoom-group');
+
+  // Add zoom behavior
+  state.zoom = d3.zoom()
+    .scaleExtent([0.1, 10]) // Zoom scale from 0.1x to 10x
+    .on('zoom', handleZoom);
+
+  state.svg.call(state.zoom);
+
   // Create tooltip
   state.tooltip = d3.select('body')
     .append('div')
@@ -77,11 +90,97 @@ function init() {
   viewOnEtherscanButton.addEventListener('click', viewOnEtherscan);
   trackWalletButton.addEventListener('click', trackWallet);
 
+  // Add zoom controls
+  addZoomControls();
+
   // Handle window resize
   window.addEventListener('resize', handleResize);
 
   // Initial data fetch
   fetchTraderData();
+}
+
+//zoom controls for the application
+function addZoomControls() {
+  if (!document.getElementById('zoomInButton')) {
+    const controlsContainer = document.querySelector('.chart-controls') || document.createElement('div');
+
+    if (!controlsContainer.classList.contains('chart-controls')) {
+      controlsContainer.className = 'chart-controls';
+      chartContainer.parentNode.insertBefore(controlsContainer, chartContainer.nextSibling);
+    }
+
+    const zoomControlsHTML = `
+      <button id="zoomInButton" class="control-button" title="Zoom In">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          <line x1="11" y1="8" x2="11" y2="14"></line>
+          <line x1="8" y1="11" x2="14" y2="11"></line>
+        </svg>
+      </button>
+      <button id="zoomOutButton" class="control-button" title="Zoom Out">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          <line x1="8" y1="11" x2="14" y2="11"></line>
+        </svg>
+      </button>
+      <button id="resetZoomButton" class="control-button" title="Reset Zoom">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 3H3v18h18V3z"></path>
+        </svg>
+      </button>
+    `;
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = zoomControlsHTML;
+    while (tempDiv.firstChild) {
+      controlsContainer.appendChild(tempDiv.firstChild);
+    }
+
+    // Add event listeners for zoom buttons
+    document.getElementById('zoomInButton').addEventListener('click', zoomIn);
+    document.getElementById('zoomOutButton').addEventListener('click', zoomOut);
+    document.getElementById('resetZoomButton').addEventListener('click', resetZoom);
+  }
+}
+
+// Handle zoom events
+function handleZoom(event) {
+  state.zoomGroup.attr('transform', event.transform);
+
+  // Adjust node sizes based on zoom level if desired
+  if (state.node) {
+    state.node.attr('stroke-width', 1.5 / event.transform.k);
+  }
+
+  // Adjust link stroke width based on zoom level
+  if (state.link) {
+    state.link.attr('stroke-width', 1.5 / event.transform.k);
+  }
+}
+
+// Zoom in function
+function zoomIn() {
+  state.svg.transition().duration(300).call(
+    state.zoom.scaleBy, 1.3
+  );
+}
+
+// Zoom out function
+function zoomOut() {
+  state.svg.transition().duration(300).call(
+    state.zoom.scaleBy, 0.7
+  );
+}
+
+// Reset zoom function
+function resetZoom() {
+  state.svg.transition().duration(300).call(
+    state.zoom.transform,
+    d3.zoomIdentity
+  );
 }
 
 // Fetch trader data from the API
@@ -166,7 +265,7 @@ function processData(data) {
 // Create the force-directed visualization
 function createVisualization() {
   // Clear existing visualization
-  state.svg.selectAll('*').remove();
+  state.zoomGroup.selectAll('*').remove();
 
   // Create force simulation
   state.simulation = d3.forceSimulation(state.data.nodes)
@@ -179,7 +278,7 @@ function createVisualization() {
     .on('tick', ticked);
 
   // Create the links
-  state.link = state.svg.append('g')
+  state.link = state.zoomGroup.append('g')
     .attr('class', 'links')
     .selectAll('line')
     .data(state.data.links)
@@ -192,7 +291,7 @@ function createVisualization() {
     .on('mouseout', handleLinkMouseOut);
 
   // Create the nodes
-  state.node = state.svg.append('g')
+  state.node = state.zoomGroup.append('g')
     .attr('class', 'nodes')
     .selectAll('circle')
     .data(state.data.nodes)
@@ -208,8 +307,8 @@ function createVisualization() {
     .on('mouseout', handleNodeMouseOut)
     .on('click', handleNodeClick);
 
-  // Add node labels for whales only
-  state.svg.append('g')
+  // node labels for whales only. I might extend later to retails
+  state.zoomGroup.append('g')
     .attr('class', 'labels')
     .selectAll('text')
     .data(state.data.nodes.filter(d => d.type === 'whale'))
@@ -243,7 +342,7 @@ function ticked() {
     .attr('cy', d => d.y);
 
   // Update label positions
-  state.svg.selectAll('.labels text')
+  state.zoomGroup.selectAll('.labels text')
     .attr('x', d => d.x)
     .attr('y', d => d.y);
 }
@@ -252,8 +351,8 @@ function ticked() {
 function drag(simulation) {
   function dragstarted(event, d) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
+    d.fx = event.x;
+    d.fy = event.y;
   }
 
   function dragged(event, d) {
@@ -268,6 +367,7 @@ function drag(simulation) {
   }
 
   return d3.drag()
+    .filter(event => !event.ctrlKey && !event.button) // Only start drag if not zooming
     .on('start', dragstarted)
     .on('drag', dragged)
     .on('end', dragended);
@@ -421,8 +521,7 @@ function showDetailPanel(node) {
 function generateTransactionHistory(node, connectedLinks) {
   transactionListElement.innerHTML = '';
 
-  // Use the actual links as transactions or generate mock data if needed
-  const transactions = connectedLinks.slice(0, 5); // Limit to 5 transactions
+  const transactions = connectedLinks.slice(0, 50); // Limit to 5 transactions
 
   if (transactions.length === 0) {
     transactionListElement.innerHTML = '<div class="transaction-item">No transactions found</div>';
@@ -558,7 +657,7 @@ function resetVisualization() {
     state.simulation = null;
   }
 
-  state.svg.selectAll('*').remove();
+  state.zoomGroup.selectAll('*').remove();
   state.data = null;
   state.link = null;
   state.node = null;
@@ -600,54 +699,3 @@ function formatCurrency(value) {
 
 // Initialize the application on load
 document.addEventListener('DOMContentLoaded', init);
-
-// Replace the mock API with this real API connection
-
-
-// Generate transaction history for the detail panel
-/*async function generateTransactionHistory(node) {
-  transactionListElement.innerHTML = '<div class="transaction-item">Loading transactions...</div>';
-  
-  try {
-    const tokenAddress = tokenAddressInput.value.trim();
-    const response = await fetch(`/api/trader/${node.id}/transactions?tokenAddress=${tokenAddress}`);
-    
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
-    
-    const transactions = await response.json();
-    
-    transactionListElement.innerHTML = '';
-    
-    if (transactions.length === 0) {
-      transactionListElement.innerHTML = '<div class="transaction-item">No transactions found</div>';
-      return;
-    }
-    
-    transactions.forEach(tx => {
-      const isOutgoing = tx.isOutgoing;
-      const otherParty = tx.otherParty;
-      const formattedDate = new Date(tx.timestamp || Date.now()).toLocaleString();
-      
-      const txElement = document.createElement('div');
-      txElement.className = 'transaction-item';
-      
-      txElement.innerHTML = `
-        <div class="transaction-item-header">
-          <span class="tx-hash">${shortenAddress(tx.txHash)}</span>
-          <span class="eth-value">${formatCurrency(tx.value)}</span>
-        </div>
-        <div>
-          ${isOutgoing ? 'To' : 'From'}: <span class="address-truncated">${shortenAddress(otherParty)}</span>
-        </div>
-        <div>${formattedDate}</div>
-      `;
-      
-      transactionListElement.appendChild(txElement);
-    });
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
-    transactionListElement.innerHTML = '<div class="transaction-item">Error loading transactions</div>';
-  }
-} */

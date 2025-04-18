@@ -10,7 +10,10 @@ body {
   color: #fff;
   overflow-x: hidden;
 }
-
+.Logo {
+  height: 20px;
+  width: 20px;
+}
 .container {
   display: flex;
   flex-direction: column;
@@ -31,7 +34,8 @@ body {
 
 .title-section {
   display: flex;
-  flex-direction: column;
+  gap: 30px;
+  align-items: center;
 }
 
 .title {
@@ -39,7 +43,10 @@ body {
   font-weight: 600;
   margin-bottom: 5px;
 }
-
+.subtitle-section{
+  display: flex;
+  flex-direction: column;
+}
 .subtitle {
   font-size: 14px;
   color: #8b95a8;
@@ -90,7 +97,7 @@ button:hover {
 
 .visualization {
   flex: 1;
-  background-color: #1a2035;
+  background-color: linear-gradient(90deg, #090015, #130a1f, #090015);
   border-radius: 10px;
   overflow: hidden;
   position: relative;

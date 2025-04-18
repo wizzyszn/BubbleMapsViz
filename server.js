@@ -15,7 +15,6 @@ const alchemy = new Alchemy({
 
 async function findBlockByTimestamp(targetTimestamp) {
     try {
-        console.log('Finding block for timestamp:', targetTimestamp);
         let low = 0;
         let high = await alchemy.core.getBlockNumber();
         let bestBlock = high;
@@ -43,7 +42,6 @@ async function findBlockByTimestamp(targetTimestamp) {
                 return mid;
             }
         }
-        console.log(`Best block: ${bestBlock}`);
         return bestBlock;
     } catch (error) {
         console.error('Error finding block:', error);
@@ -129,7 +127,7 @@ app.get('/api/traders', async (req, res) => {
         let nodes = Object.entries(traders)
             .map(([id, volume]) => ({ id, volume }))
             .sort((a, b) => b.volume - a.volume)
-            .slice(0, 100);
+            .slice(0, 50);
 
         // Classify whales (top 25% by volume) vs. retail
         const volumeThreshold = nodes[Math.floor(nodes.length * 0.25)].volume;
