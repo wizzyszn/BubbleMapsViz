@@ -37,6 +37,7 @@ const loader = document.querySelector('.loader');
 // Control buttons
 const showAllLinksButton = document.getElementById('showAllLinks');
 const hideAllLinksButton = document.getElementById('hideAllLinks');
+const cluster= true;
 const clusterByCategoryButton = document.getElementById('clusterByCategory');
 const resetLayoutButton = document.getElementById('resetLayout');
 const closeDetailPanelButton = document.getElementById('closeDetailPanel');
@@ -100,7 +101,7 @@ function init() {
   fetchTraderData();
 }
 
-//zoom controls for the application
+// Zoom controls for the application
 function addZoomControls() {
   if (!document.getElementById('zoomInButton')) {
     const controlsContainer = document.querySelector('.chart-controls') || document.createElement('div');
@@ -253,8 +254,8 @@ function processData(data) {
     source: link.source,
     target: link.target,
     // Add some sample transaction data for demo purposes
-    value: Math.random() * 1000 + 100,
-    timestamp: Date.now() - Math.floor(Math.random() * 604800000),
+    value: Math.random() * 1000 + 100 ,  // Random value between 100 and 1100
+    timestamp: Date.now() - Math.floor(Math.random() * 604800000), // Random timestamp within last week
     txHash: '0x' + Array.from({ length: 64 }, () =>
       '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('')
   }));
@@ -307,7 +308,7 @@ function createVisualization() {
     .on('mouseout', handleNodeMouseOut)
     .on('click', handleNodeClick);
 
-  // node labels for whales only. I might extend later to retails
+  // Node labels for whales only
   state.zoomGroup.append('g')
     .attr('class', 'labels')
     .selectAll('text')
@@ -521,7 +522,7 @@ function showDetailPanel(node) {
 function generateTransactionHistory(node, connectedLinks) {
   transactionListElement.innerHTML = '';
 
-  const transactions = connectedLinks.slice(0, 50); // Limit to 5 transactions
+  const transactions = connectedLinks.slice(0, 5); // Limit to 5 transactions
 
   if (transactions.length === 0) {
     transactionListElement.innerHTML = '<div class="transaction-item">No transactions found</div>';
@@ -582,7 +583,7 @@ function copyTraderAddress() {
     });
 }
 
-// Complete the viewOnEtherscan function
+// View on Etherscan
 function viewOnEtherscan() {
   if (!state.selectedNode) return;
 
@@ -657,11 +658,11 @@ function resetVisualization() {
     state.simulation = null;
   }
 
-  state.zoomGroup.selectAll('*').remove();
   state.data = null;
   state.link = null;
   state.node = null;
   state.selectedNode = null;
+  state.zoomGroup.selectAll('*').remove();
 }
 
 // Handle window resize

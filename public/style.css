@@ -10,10 +10,12 @@ body {
   color: #fff;
   overflow-x: hidden;
 }
+
 .Logo {
   height: 20px;
   width: 20px;
 }
+
 .container {
   display: flex;
   flex-direction: column;
@@ -43,10 +45,12 @@ body {
   font-weight: 600;
   margin-bottom: 5px;
 }
-.subtitle-section{
+
+.subtitle-section {
   display: flex;
   flex-direction: column;
 }
+
 .subtitle {
   font-size: 14px;
   color: #8b95a8;
@@ -97,7 +101,7 @@ button:hover {
 
 .visualization {
   flex: 1;
-  background-color: linear-gradient(90deg, #090015, #130a1f, #090015);
+  background: linear-gradient(90deg, #090015, #130a1f, #090015);
   border-radius: 10px;
   overflow: hidden;
   position: relative;
@@ -122,6 +126,8 @@ button:hover {
 
 .detail-item {
   margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-label {
@@ -139,6 +145,7 @@ button:hover {
   display: flex;
   align-items: center;
   gap: 5px;
+  justify-content: space-between;
 }
 
 .copy-button {
@@ -184,6 +191,36 @@ button:hover {
 .controls button {
   font-size: 12px;
   padding: 6px 12px;
+}
+
+.chart-controls {
+  position: absolute;
+  top: 60px;
+  left: 15px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 10;
+  background-color: rgba(26, 32, 53, 0.7);
+  padding: 10px;
+  border-radius: 5px;
+  backdrop-filter: blur(5px);
+  height: auto;
+}
+
+.control-button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .tooltip {
@@ -255,7 +292,6 @@ button:hover {
   0% {
     transform: rotate(0deg);
   }
-
   100% {
     transform: rotate(360deg);
   }
@@ -311,13 +347,10 @@ button:hover {
 }
 
 #closeDetailPanel {
-  position: absolute;
-  top: 15px;
-  right: 15px;
   background: none;
   border: none;
   color: #8b95a8;
   cursor: pointer;
   font-size: 16px;
-  padding: 0;
+  padding: 2px;
 }
