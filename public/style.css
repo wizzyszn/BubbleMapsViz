@@ -2,7 +2,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Orbitron", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
@@ -195,7 +195,7 @@ button:hover {
 
 .chart-controls {
   position: absolute;
-  top: 60px;
+  top: 350px;
   left: 15px;
   display: inline-flex;
   flex-direction: column;
@@ -353,4 +353,22 @@ button:hover {
   cursor: pointer;
   font-size: 16px;
   padding: 2px;
+}
+.transaction-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy-tx-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+  color: #666;
+}
+
+.copy-tx-button:hover {
+  color: #000;
 }

@@ -1,4 +1,3 @@
-// Configuration
 const config = {
   apiUrl: '/api/traders',
   nodeSizeRange: [10, 50],
@@ -7,6 +6,17 @@ const config = {
     retail: '#4ade80',
     linkDefault: '#8b95a8',
     linkHighlight: '#3a6df0'
+  },
+  // Added explorer URLs for different chains
+  explorers: {
+    eth: { name: 'Etherscan', baseUrl: 'https://etherscan.io' },
+    avax: { name: 'Snowtrace', baseUrl: 'https://snowtrace.io' },
+    base: { name: 'Basescan', baseUrl: 'https://basescan.org' },
+    bnb: { name: 'BscScan', baseUrl: 'https://bscscan.com' },
+    arbi: { name: 'Arbiscan', baseUrl: 'https://arbiscan.io' },
+    poly: { name: 'PolygonScan', baseUrl: 'https://polygonscan.com' },
+    opt: { name: 'Optimism Explorer', baseUrl: 'https://optimistic.etherscan.io' },
+    sonic: { name: 'Sonic Explorer', baseUrl: 'https://explorer.sonic.network' } // Adjust if Sonic has a different explorer
   }
 };
 
@@ -22,12 +32,14 @@ const state = {
   tooltip: null,
   selectedNode: null,
   width: 0,
-  height: 0
+  height: 0,
+  selectedChain: 'eth' // Added to track selected chain
 };
 
 // DOM Elements
 const tokenAddressInput = document.getElementById('tokenAddress');
 const timeFilterSelect = document.getElementById('timeFilter');
+const chainFilterSelect = document.getElementById('chainFilter'); // Added chain filter
 const searchButton = document.getElementById('searchButton');
 const chartContainer = document.getElementById('chart');
 const detailPanel = document.getElementById('detailPanel');
@@ -37,7 +49,6 @@ const loader = document.querySelector('.loader');
 // Control buttons
 const showAllLinksButton = document.getElementById('showAllLinks');
 const hideAllLinksButton = document.getElementById('hideAllLinks');
-const cluster= true;
 const clusterByCategoryButton = document.getElementById('clusterByCategory');
 const resetLayoutButton = document.getElementById('resetLayout');
 const closeDetailPanelButton = document.getElementById('closeDetailPanel');
@@ -69,7 +80,7 @@ function init() {
 
   // Add zoom behavior
   state.zoom = d3.zoom()
-    .scaleExtent([0.1, 10]) // Zoom scale from 0.1x to 10x
+    .scaleExtent([0.1, 10])
     .on('zoom', handleZoom);
 
   state.svg.call(state.zoom);
@@ -97,8 +108,10 @@ function init() {
   // Handle window resize
   window.addEventListener('resize', handleResize);
 
-  // Initial data fetch
-  fetchTraderData();
+  // Initial data fetch if token address is valid
+  if (tokenAddressInput.value.trim() && /^0x[a-fA-F0-9]{40}$/i.test(tokenAddressInput.value.trim())) {
+    fetchTraderData();
+  }
 }
 
 // Zoom controls for the application
@@ -151,12 +164,10 @@ function addZoomControls() {
 function handleZoom(event) {
   state.zoomGroup.attr('transform', event.transform);
 
-  // Adjust node sizes based on zoom level if desired
   if (state.node) {
     state.node.attr('stroke-width', 1.5 / event.transform.k);
   }
 
-  // Adjust link stroke width based on zoom level
   if (state.link) {
     state.link.attr('stroke-width', 1.5 / event.transform.k);
   }
@@ -188,6 +199,8 @@ function resetZoom() {
 async function fetchTraderData() {
   const tokenAddress = tokenAddressInput.value.trim();
   const timeFilter = timeFilterSelect.value;
+  const chain = chainFilterSelect.value; // Added chain filter value
+  state.selectedChain = chain; // Store selected chain
 
   if (!tokenAddress || !/^0x[a-fA-F0-9]{40}$/i.test(tokenAddress)) {
     alert('Please enter a valid token contract address');
@@ -199,9 +212,10 @@ async function fetchTraderData() {
   loader.style.display = 'block';
   noDataMessage.style.display = 'none';
   closeDetailPanel();
-
+  viewOnEtherscanButton.textContent = `View on ${config.explorers[chain]?.name || 'Explorer'}`;
   try {
-    const response = await fetch(`${config.apiUrl}?address=${tokenAddress}&time=${timeFilter}`);
+    // Updated API call to include chain parameter
+    const response = await fetch(`${config.apiUrl}?address=${tokenAddress}&time=${timeFilter}&chain=${chain}`);
 
     if (!response.ok) {
       throw new Error(`API responded with status: ${response.status}`);
@@ -233,10 +247,8 @@ async function fetchTraderData() {
 
 // Process the API data
 function processData(data) {
-  // Calculate max volume for node sizing
-  const maxVolume = Math.max(...data.nodes.map(node => node.volume));
+  const maxVolume = Math.max(...data.nodes.map(node => Math.abs(node.volume)));
 
-  // Process nodes
   const nodes = data.nodes.map(node => {
     const sizeScale = d3.scaleLinear()
       .domain([0, maxVolume])
@@ -244,31 +256,35 @@ function processData(data) {
 
     return {
       ...node,
-      radius: sizeScale(node.volume),
+      radius: sizeScale(Math.abs(node.volume)),
       color: node.type === 'whale' ? config.colors.whale : config.colors.retail
     };
   });
 
-  // Process links
-  const links = data.links.map(link => ({
-    source: link.source,
-    target: link.target,
-    // Add some sample transaction data for demo purposes
-    value: Math.random() * 1000 + 100 ,  // Random value between 100 and 1100
-    timestamp: Date.now() - Math.floor(Math.random() * 604800000), // Random timestamp within last week
-    txHash: '0x' + Array.from({ length: 64 }, () =>
-      '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('')
-  }));
+  const nodeMap = new Map(nodes.map(node => [node.id, node]));
+  
+  const links = data.links.map(link => {
+    const sourceNode = nodeMap.get(link.source);
+    const targetNode = nodeMap.get(link.target);
+    
+    if (!sourceNode || !targetNode) return null;
+    
+    return {
+      source: link.source,
+      target: link.target,
+      timestamp: link.timestamp,
+      hash: link.hash,
+      value: link.value
+    };
+  }).filter(link => link !== null);
 
   return { nodes, links };
 }
 
 // Create the force-directed visualization
 function createVisualization() {
-  // Clear existing visualization
   state.zoomGroup.selectAll('*').remove();
 
-  // Create force simulation
   state.simulation = d3.forceSimulation(state.data.nodes)
     .force('link', d3.forceLink(state.data.links)
       .id(d => d.id)
@@ -278,7 +294,6 @@ function createVisualization() {
     .force('collide', d3.forceCollide().radius(d => d.radius + 5))
     .on('tick', ticked);
 
-  // Create the links
   state.link = state.zoomGroup.append('g')
     .attr('class', 'links')
     .selectAll('line')
@@ -291,7 +306,6 @@ function createVisualization() {
     .on('mouseover', handleLinkMouseOver)
     .on('mouseout', handleLinkMouseOut);
 
-  // Create the nodes
   state.node = state.zoomGroup.append('g')
     .attr('class', 'nodes')
     .selectAll('circle')
@@ -308,7 +322,6 @@ function createVisualization() {
     .on('mouseout', handleNodeMouseOut)
     .on('click', handleNodeClick);
 
-  // Node labels for whales only
   state.zoomGroup.append('g')
     .attr('class', 'labels')
     .selectAll('text')
@@ -324,25 +337,21 @@ function createVisualization() {
 
 // Update positions on tick
 function ticked() {
-  // Contain nodes within visualization bounds
   state.data.nodes.forEach(d => {
     d.x = Math.max(d.radius, Math.min(state.width - d.radius, d.x));
     d.y = Math.max(d.radius, Math.min(state.height - d.radius, d.y));
   });
 
-  // Update link positions
   state.link
     .attr('x1', d => d.source.x)
     .attr('y1', d => d.source.y)
     .attr('x2', d => d.target.x)
     .attr('y2', d => d.target.y);
 
-  // Update node positions
   state.node
     .attr('cx', d => d.x)
     .attr('cy', d => d.y);
 
-  // Update label positions
   state.zoomGroup.selectAll('.labels text')
     .attr('x', d => d.x)
     .attr('y', d => d.y);
@@ -352,8 +361,8 @@ function ticked() {
 function drag(simulation) {
   function dragstarted(event, d) {
     if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = event.x;
-    d.fy = event.y;
+    d.fx = d.x;
+    d.fy = d.y;
   }
 
   function dragged(event, d) {
@@ -368,7 +377,7 @@ function drag(simulation) {
   }
 
   return d3.drag()
-    .filter(event => !event.ctrlKey && !event.button) // Only start drag if not zooming
+    .filter(event => !event.ctrlKey && !event.button)
     .on('start', dragstarted)
     .on('drag', dragged)
     .on('end', dragended);
@@ -376,28 +385,44 @@ function drag(simulation) {
 
 // Node hover functionality
 function handleNodeMouseOver(event, d) {
-  // Highlight connected links and nodes
   state.link
-    .attr('stroke', l => (l.source.id === d.id || l.target.id === d.id)
-      ? config.colors.linkHighlight : config.colors.linkDefault)
-    .attr('stroke-opacity', l => (l.source.id === d.id || l.target.id === d.id) ? 0.8 : 0.2)
-    .attr('stroke-width', l => (l.source.id === d.id || l.target.id === d.id) ? 2.5 : 1);
+    .attr('stroke', l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      return (sourceId === d.id || targetId === d.id)
+        ? config.colors.linkHighlight : config.colors.linkDefault;
+    })
+    .attr('stroke-opacity', l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      return (sourceId === d.id || targetId === d.id) ? 0.8 : 0.2;
+    })
+    .attr('stroke-width', l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      return (sourceId === d.id || targetId === d.id) ? 2.5 : 1;
+    });
 
   state.node
     .attr('stroke-width', n => {
-      const isConnected = state.data.links.some(l =>
-        (l.source.id === d.id && l.target.id === n.id) ||
-        (l.target.id === d.id && l.source.id === n.id));
+      const isConnected = state.data.links.some(l => {
+        const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+        const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+        return (sourceId === d.id && targetId === n.id) ||
+              (targetId === d.id && sourceId === n.id);
+      });
       return n.id === d.id || isConnected ? 3 : 1.5;
     })
     .attr('fill-opacity', n => {
-      const isConnected = state.data.links.some(l =>
-        (l.source.id === d.id && l.target.id === n.id) ||
-        (l.target.id === d.id && l.source.id === n.id));
+      const isConnected = state.data.links.some(l => {
+        const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+        const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+        return (sourceId === d.id && targetId === n.id) ||
+              (targetId === d.id && sourceId === n.id);
+      });
       return n.id === d.id || isConnected ? 1 : 0.3;
     });
 
-  // Show tooltip
   state.tooltip
     .transition()
     .duration(200)
@@ -415,7 +440,6 @@ function handleNodeMouseOver(event, d) {
 
 // Node hover out functionality
 function handleNodeMouseOut() {
-  // Reset links and nodes
   state.link
     .attr('stroke', config.colors.linkDefault)
     .attr('stroke-opacity', 0.5)
@@ -425,7 +449,6 @@ function handleNodeMouseOut() {
     .attr('stroke-width', 1.5)
     .attr('fill-opacity', 0.8);
 
-  // Hide tooltip
   state.tooltip
     .transition()
     .duration(500)
@@ -434,28 +457,29 @@ function handleNodeMouseOut() {
 
 // Link hover functionality
 function handleLinkMouseOver(event, d) {
-  // Highlight the link
   d3.select(event.currentTarget)
     .attr('stroke', config.colors.linkHighlight)
     .attr('stroke-opacity', 1)
     .attr('stroke-width', 3);
 
-  // Show transaction details in tooltip
   state.tooltip
     .transition()
     .duration(200)
     .style('opacity', 0.9);
 
-  const formattedDate = new Date(d.timestamp).toLocaleString();
+  const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
+  const targetId = typeof d.target === 'object' ? d.target.id : d.target;
+  const formattedDate = d.timestamp ? new Date(d.timestamp).toLocaleString() : 'Unknown date';
+  const formattedValue = d.value ? formatCurrency(d.value) : 'Unknown value';
 
   state.tooltip
     .html(`
       <strong>Transaction Details</strong><br/>
-      <b>From:</b> ${shortenAddress(d.source.id)}<br/>
-      <b>To:</b> ${shortenAddress(d.target.id)}<br/>
-      <b>Value:</b> ${formatCurrency(d.value)}<br/>
-      <b>Time:</b> ${formattedDate}<br/>
-      <b>Tx Hash:</b> ${shortenAddress(d.txHash)}
+      <b>Tx Hash:</b> ${shortenAddress(d.hash || 'Unknown')}<br/>
+      <b>From:</b> ${shortenAddress(sourceId)}<br/>
+      <b>To:</b> ${shortenAddress(targetId)}<br/>
+      <b>Value:</b> ${formattedValue}<br/>
+      <b>Time:</b> ${formattedDate}
     `)
     .style('left', (event.pageX + 15) + 'px')
     .style('top', (event.pageY - 30) + 'px');
@@ -478,11 +502,7 @@ function handleLinkMouseOut(event) {
 function handleNodeClick(event, d) {
   state.selectedNode = d;
   showDetailPanel(d);
-
-  // Highlight connected links and nodes (same as mouseover)
   handleNodeMouseOver(event, d);
-
-  // Don't let the tooltip disappear when clicking
   state.tooltip
     .transition()
     .duration(0)
@@ -492,64 +512,105 @@ function handleNodeClick(event, d) {
 // Show details panel for selected node
 function showDetailPanel(node) {
   detailPanel.style.display = 'block';
-
-  // Update panel details
   traderAddressElement.textContent = node.id;
   traderTypeElement.innerHTML = `${node.type} <span class="badge badge-${node.type}">${node.type}</span>`;
   traderVolumeElement.textContent = formatCurrency(node.volume);
 
-  // Count connected traders
-  const connectedLinks = state.data.links.filter(
-    l => l.source.id === node.id || l.target.id === node.id
-  );
+  const connectedLinks = state.data.links.filter(l => {
+    const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+    const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+    return sourceId === node.id || targetId === node.id;
+  });
 
   const connectedTraders = new Set();
   connectedLinks.forEach(link => {
-    if (link.source.id === node.id) {
-      connectedTraders.add(link.target.id);
+    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    if (sourceId === node.id) {
+      connectedTraders.add(targetId);
     } else {
-      connectedTraders.add(link.source.id);
+      connectedTraders.add(sourceId);
     }
   });
 
   connectedTradersElement.textContent = connectedTraders.size;
-
-  // Generate mock transaction history
-  generateTransactionHistory(node, connectedLinks);
+  displayTransactions(node, connectedLinks);
 }
 
-// Generate transaction history for the detail panel
-function generateTransactionHistory(node, connectedLinks) {
+// Display transaction data for the detail panel
+function displayTransactions(node, connectedLinks) {
   transactionListElement.innerHTML = '';
 
-  const transactions = connectedLinks.slice(0, 5); // Limit to 5 transactions
+  if (node.transactions && node.transactions.length > 0) {
+    const transactions = node.transactions.slice(0, 5);
+    
+    transactions.forEach(tx => {
+      const txElement = document.createElement('div');
+      txElement.className = 'transaction-item';
+      const formattedDate = tx.timestamp ? new Date(tx.timestamp).toLocaleString() : 'Unknown date';
+      
+      txElement.innerHTML = `
+        <div class="transaction-item-header">
+          <span class="tx-hash">${shortenAddress(tx.hash || 'Unknown')}</span>
+          <button class="copy-tx-button" data-hash="${tx.hash || ''}" title="Copy Transaction Hash">📋</button>
+          <span class="eth-value">${tx.value ? formatCurrency(tx.value) : 'Unknown value'}</span>
+        </div>
+        <div>${formattedDate}</div>
+      `;
+      
+      transactionListElement.appendChild(txElement);
+    });
 
-  if (transactions.length === 0) {
-    transactionListElement.innerHTML = '<div class="transaction-item">No transactions found</div>';
+    transactionListElement.querySelectorAll('.copy-tx-button').forEach(button => {
+      button.addEventListener('click', copyTransactionHash);
+    });
+  } else {
+    const visibleLinks = connectedLinks.slice(0, 5);
+    
+    if (visibleLinks.length === 0) {
+      transactionListElement.innerHTML = '<div class="transaction-item">No transaction data available</div>';
+      return;
+    }
+    
+    visibleLinks.forEach((link, index) => {
+      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+      const isOutgoing = sourceId === node.id;
+      const otherParty = isOutgoing ? targetId : sourceId;
+      
+      const txElement = document.createElement('div');
+      txElement.className = 'transaction-item';
+      
+      txElement.innerHTML = `
+        <div class="transaction-item-header">
+          <span class="tx-hash">Link #${index + 1}</span>
+        </div>
+        <div>
+          ${isOutgoing ? 'To' : 'From'}: <span class="address-truncated">${shortenAddress(otherParty)}</span>
+        </div>
+      `;
+      
+      transactionListElement.appendChild(txElement);
+    });
+  }
+}
+
+// Copy transaction hash to clipboard
+function copyTransactionHash(event) {
+  const txHash = event.target.dataset.hash;
+  if (!txHash) {
+    alert('No transaction hash available to copy');
     return;
   }
 
-  transactions.forEach((tx, index) => {
-    const isOutgoing = tx.source.id === node.id;
-    const otherParty = isOutgoing ? tx.target.id : tx.source.id;
-    const formattedDate = new Date(tx.timestamp).toLocaleString();
-
-    const txElement = document.createElement('div');
-    txElement.className = 'transaction-item';
-
-    txElement.innerHTML = `
-      <div class="transaction-item-header">
-        <span class="tx-hash">${shortenAddress(tx.txHash)}</span>
-        <span class="eth-value">${formatCurrency(tx.value)}</span>
-      </div>
-      <div>
-        ${isOutgoing ? 'To' : 'From'}: <span class="address-truncated">${shortenAddress(otherParty)}</span>
-      </div>
-      <div>${formattedDate}</div>
-    `;
-
-    transactionListElement.appendChild(txElement);
-  });
+  navigator.clipboard.writeText(txHash)
+    .then(() => {
+      alert('Transaction hash copied to clipboard');
+    })
+   we.catch(err => {
+      console.error('Failed to copy transaction hash:', err);
+      alert('Failed to copy transaction hash');
+    });
 }
 
 // Close detail panel
@@ -557,7 +618,6 @@ function closeDetailPanel() {
   detailPanel.style.display = 'none';
   state.selectedNode = null;
 
-  // Reset node highlighting
   if (state.node) {
     state.node
       .attr('stroke-width', 1.5)
@@ -583,21 +643,24 @@ function copyTraderAddress() {
     });
 }
 
-// View on Etherscan
+// View on blockchain explorer (updated for multi-chain)
 function viewOnEtherscan() {
   if (!state.selectedNode) return;
 
-  const url = `https://etherscan.io/address/${state.selectedNode.id}`;
+  const chain = state.selectedChain;
+  const explorer = config.explorers[chain] || config.explorers.eth; // Fallback to Etherscan
+  const url = `${explorer.baseUrl}/address/${state.selectedNode.id}`;
   window.open(url, '_blank');
 }
 
-// Track wallet functionality
+// Track wallet functionality (updated for multi-chain)
 function trackWallet() {
   if (!state.selectedNode) return;
 
-  // This would typically connect to a wallet tracking service
-  // For demo purposes, we'll just show an alert
-  alert(`Tracking wallet ${shortenAddress(state.selectedNode.id)}`);
+  const chain = state.selectedChain;
+  const explorer = config.explorers[chain] || config.explorers.eth; // Fallback to Etherscan
+  const url = `${explorer.baseUrl}/tokentxns?a=${state.selectedNode.id}`;
+  window.open(url, '_blank');
 }
 
 // Show all links between nodes
@@ -617,16 +680,13 @@ function hideAllLinks() {
 function clusterByCategory() {
   if (!state.simulation) return;
 
-  // Stop current simulation
   state.simulation.stop();
 
-  // Define centers for each category
   const centers = {
     whale: { x: state.width * 0.25, y: state.height / 2 },
     retail: { x: state.width * 0.75, y: state.height / 2 }
   };
 
-  // Update forces
   state.simulation
     .force('x', d3.forceX().x(d => centers[d.type].x).strength(0.5))
     .force('y', d3.forceY().y(d => centers[d.type].y).strength(0.5))
@@ -639,10 +699,8 @@ function clusterByCategory() {
 function resetLayout() {
   if (!state.simulation) return;
 
-  // Stop current simulation
   state.simulation.stop();
 
-  // Reset forces to default
   state.simulation
     .force('x', null)
     .force('y', null)
@@ -691,6 +749,18 @@ function shortenAddress(address) {
 // Helper function to format currency values
 function formatCurrency(value) {
   if (value == null) return '$0';
+  const absValue = Math.abs(value);
+  
+  if (absValue >= 1000000) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation: 'compact',
+      compactDisplay: 'short',
+      maximumFractionDigits: 1
+    }).format(value);
+  }
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

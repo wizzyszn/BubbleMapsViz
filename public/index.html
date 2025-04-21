@@ -2,6 +2,12 @@
 <html lang="en">
   <head>
     <link rel="icon" href="./assets/favicon.ico" type="image/x-icon" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./style.css" />
     <meta charset="UTF-8" />
     <title>Top Token Holder Network Visualization</title>
@@ -28,9 +34,17 @@
             value="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
           />
           <select id="timeFilter">
-            <option value="all">All Time</option>
+            <option value="2h">Last 2 Hours</option>
+            <option value="6h">Last 6 Hours</option>
+            <option value="24h">Last 24 Hours</option>
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
+            <option value="all">All Time</option>
+          </select>
+          <select id="chainFilter">
+            <option value="eth">ETH</option>
+            <option value="bnb">BNB</option>
+            <option value="arbi">ARB</option>
           </select>
           <button id="searchButton">Analyze</button>
         </div>
@@ -59,7 +73,7 @@
           </div>
           <div class="loader">
             <div class="loader-spinner"></div>
-            <p>Loading trader data...</p>
+            <p>Fetching Top Traders...</p>
           </div>
         </div>
         <div class="detail-panel" id="detailPanel">
