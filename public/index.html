@@ -5,7 +5,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./style.css" />
@@ -27,12 +27,16 @@
           </div>
         </div>
         <div class="search-section">
-          <input
-            type="text"
-            id="tokenAddress"
-            placeholder="Enter token contract address (0x...)"
-            value="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-          />
+          <div class="select-container">
+            <select id="chainFilter" class="chain-select">
+              <option value="eth" selected>Ethereum (ETH)</option>
+              <option value="bnb">BNB Smart Chain</option>
+              <option value="arbi">Arbitrum</option>
+            </select>
+            <select id="tokenSelect" class="token-select" disabled>
+              <option value="" disabled selected>Select Token</option>
+            </select>
+          </div>
           <select id="timeFilter">
             <option value="2h">Last 2 Hours</option>
             <option value="6h">Last 6 Hours</option>
@@ -41,19 +45,13 @@
             <option value="30d">Last 30 Days</option>
             <option value="all">All Time</option>
           </select>
-          <select id="chainFilter">
-            <option value="eth">ETH</option>
-            <option value="bnb">BNB</option>
-            <option value="arbi">ARB</option>
-          </select>
           <button id="searchButton">Analyze</button>
         </div>
       </div>
       <div class="content">
         <div class="visualization" id="chart">
           <div class="controls">
-            <button id="showAllLinks">Show All Connections</button>
-            <button id="hideAllLinks">Hide All Connections</button>
+            <button id="toggleLinks">Hide All Connections</button>
             <button id="clusterByCategory">Cluster By Type</button>
             <button id="resetLayout">Reset Layout</button>
           </div>
@@ -77,13 +75,35 @@
           </div>
         </div>
         <div class="detail-panel" id="detailPanel">
-          <h2 class="panel-title">Trader Details</h2>
+          <h2
+            class="panel-title"
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            "
+          >
+            Trader Details
+            <button
+              id="closeDetailPanel"
+              style="
+                background: none;
+                border: none;
+                color: #8b95a8;
+                cursor: pointer;
+                font-size: 16px;
+                padding: 2px;
+                margin-left: 10px;
+              "
+            >
+              ✕
+            </button>
+          </h2>
           <div class="detail-item">
             <div class="detail-label">Address</div>
             <div class="address-section">
               <div class="detail-value" id="traderAddress"></div>
               <button class="copy-button" id="copyAddressButton">📋</button>
-              <button id="closeDetailPanel">✕</button>
             </div>
           </div>
           <div class="detail-item">
@@ -100,7 +120,6 @@
           </div>
           <div class="panel-action-buttons">
             <button id="viewOnEtherscan">View on Etherscan</button>
-            <button id="trackWallet" disabled="true">Track Wallet</button>
           </div>
           <div class="tx-detail-section">
             <h3 class="panel-title">Recent Transactions</h3>
@@ -113,6 +132,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <script src="./script.js" type="module"></script>
+    <script type="module" src="/js/main.js"></script>
   </body>
 </html>

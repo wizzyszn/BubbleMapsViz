@@ -2,13 +2,16 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: "Orbitron", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Montserrat", Tahoma, Geneva, Verdana, sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: #3a6df0 #181e2c;
 }
 
 body {
   background-color: #121826;
   color: #fff;
   overflow-x: hidden;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
 }
 
 .Logo {
@@ -292,6 +295,7 @@ button:hover {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -354,6 +358,7 @@ button:hover {
   font-size: 16px;
   padding: 2px;
 }
+
 .transaction-item-header {
   display: flex;
   align-items: center;
@@ -371,4 +376,53 @@ button:hover {
 
 .copy-tx-button:hover {
   color: #000;
+}
+
+.select-container {
+  display: flex;
+  gap: 10px;
+}
+
+.chain-select,
+.token-select {
+  padding: 8px 15px;
+  border-radius: 5px;
+  border: 1px solid #2a3144;
+  background-color: #1e2738;
+  color: white;
+  min-width: 200px;
+  cursor: pointer;
+}
+
+.chain-select:disabled,
+.token-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chain-select:focus,
+.token-select:focus {
+  outline: none;
+  border-color: #3a6df0;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 10px;
+  background: #181e2c;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3a6df0;
+  border-radius: 8px;
+  min-height: 40px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2f5ad8;
+}
+
+::-webkit-scrollbar-corner {
+  background: #181e2c;
 }

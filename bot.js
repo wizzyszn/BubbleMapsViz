@@ -4,16 +4,12 @@ dotenv.config();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 bot.command('start', (ctx) => {
-  ctx.reply('Welcome! Use /bubblemaps <contract_address> to visualize top traders.');
+  ctx.reply('🌟 Dive into the trading universe!\n\n🚀 Use /bubblemaps <chain> <contract_address> to uncover and visualize the top traders in action! 💸');
 });
-
 bot.command('bubblemaps', (ctx) => {
   const args = ctx.message.text.split(' ');
-  const contractAddress = args[1];
-
-  if (!contractAddress || !/^0x[a-fA-F0-9]{40}$/.test(contractAddress)) {
-    return ctx.reply('Please provide a valid Ethereum contract address.');
-  }
+  const contractAddress = args[2];
+  const chain = args[1]
 
   ctx.reply('View top traders:', {
     reply_markup: {
@@ -21,7 +17,7 @@ bot.command('bubblemaps', (ctx) => {
         [
           {
             text: 'Open Bubble Map',
-            web_app: { url: `https://bubblemapsviz.onrender.com/?address=${contractAddress}` },
+            web_app: { url: `https://bubblemapsviz.onrender.com/?address=${contractAddress}&chain=${chain}` },
           },
         ],
       ],
