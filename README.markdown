@@ -6,6 +6,7 @@
 > - As a **standalone web dashboard** (SPA) rendered by the Express server at [https://bubblemapsviz.onrender.com/](https://bubblemapsviz.onrender.com/)
 
 ## Demo Video
+Click on the screenshot below👇 to see the demo on Youtube.
 [![Watch the demo](./assets/images/Screenshot%20(329).png)](https://youtu.be/mDeC0j1BDxs)
 ## Table of Contents
 
