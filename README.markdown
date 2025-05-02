@@ -5,6 +5,8 @@
 > - As a **Telegram Web App** via the bot [@bubble_viz_bot](https://t.me/bubble_viz_bot)
 > - As a **standalone web dashboard** (SPA) rendered by the Express server at [https://bubblemapsviz.onrender.com/](https://bubblemapsviz.onrender.com/)
 
+## Demo Video
+[![Watch the demo](./assets/images/Screenshot%20(329).png)](https://youtu.be/mDeC0j1BDxs)
 ## Table of Contents
 
 - [Overview](#overview)
@@ -79,9 +81,11 @@ The project integrates a Telegram bot for user interaction, a Node.js Express se
    │   ├── style.css          # CSS styles (with custom scrollbar)
    │   ├── js/                # Modular JS (main.js, ui.js, etc.)
    │   └── assets/            # Images, favicon, etc.
-   ├── src/                   # Express server and API routes
+   ├── src/                   # Express server, API routes, and backend utilities
    │   ├── server.js          # Node.js Express server API endpoints and Alchemy integration
-   │   └── routes/            # API route handlers
+   │   ├── routes/            # API route handlers (traders.js, chains.js, etc.)
+   │   └── utils/             # Backend utility modules (alchemy.js, cache.js, transfers.js)
+   ├── services/              # (Present, purpose not documented)
    ├── bot.js                 # Telegram Bot
    ├── .env                   # Environment variables
    ├── package.json           # Project dependencies
